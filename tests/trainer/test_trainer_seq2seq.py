@@ -22,6 +22,8 @@ from transformers import (
     GenerationConfig,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
+    T5Config,
+    T5ForConditionalGeneration,
     T5Tokenizer,
 )
 from transformers.testing_utils import (
@@ -46,6 +48,27 @@ set_seed(42)
 
 @require_sentencepiece
 class Seq2seqTrainerTester(TestCasePlus):
+    @require_torch
+    def test_optimizer_cls_and_kwargs(self):
+        model = T5ForConditionalGeneration(
+            T5Config(
+                vocab_size=32,
+                d_model=16,
+                d_ff=32,
+                num_layers=1,
+                num_decoder_layers=1,
+                num_heads=2,
+            )
+        )
+        optimizer_cls_and_kwargs = (torch.optim.SGD, {"lr": 0.1})
+        trainer = Seq2SeqTrainer(
+            model=model,
+            args=Seq2SeqTrainingArguments(self.get_auto_remove_tmp_dir()),
+            optimizer_cls_and_kwargs=optimizer_cls_and_kwargs,
+        )
+
+        self.assertEqual(trainer.optimizer_cls_and_kwargs, optimizer_cls_and_kwargs)
+
     @slow
     @require_torch
     def test_finetune_bert2bert(self):
