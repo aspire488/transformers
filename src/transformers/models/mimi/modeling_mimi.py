@@ -1410,6 +1410,18 @@ class MimiModel(MimiPreTrainedModel):
             raise ValueError(
                 "Audio encoding was requested, but the model was initialized without an encoder (`encoder_config=None`)."
             )
+
+        use_streaming = use_streaming if use_streaming is not None else self.config.use_streaming
+        if not use_streaming:
+            # Mimi's reference encoder pads the waveform to a complete frame before
+            # running the strided convolutions. Padding each convolution independently
+            # changes the final latent for inputs whose length is not frame-aligned.
+            padding = (-input_values.shape[-1]) % self.config.frame_size
+            if padding:
+                input_values = nn.functional.pad(input_values, (0, padding))
+                if padding_mask is not None:
+                    padding_mask = nn.functional.pad(padding_mask, (0, padding), value=0)
+
         encoder_outputs = self.encoder(
             input_values,
             padding_mask=padding_mask,
