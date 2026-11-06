@@ -194,6 +194,23 @@ class MimiModelTest(ModelTesterMixin, unittest.TestCase):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_model_forward(*config_and_inputs)
 
+    def test_encode_pads_input_to_complete_frames(self):
+        config = self.model_tester.get_config()
+        model = MimiModel(config).to(torch_device).eval()
+        frame_size = config.frame_size
+
+        input_values = torch.randn(
+            1, self.model_tester.num_channels, frame_size + 1, device=torch_device
+        )
+        padded_input_values = torch.nn.functional.pad(input_values, (0, frame_size - 1))
+
+        with torch.no_grad():
+            output = model.encode(input_values).audio_codes
+            expected = model.encode(padded_input_values).audio_codes
+
+        self.assertEqual(output.shape[-1], 2)
+        torch.testing.assert_close(output, expected)
+
     def test_forward_signature(self):
         config, _ = self.model_tester.prepare_config_and_inputs_for_common()
 
